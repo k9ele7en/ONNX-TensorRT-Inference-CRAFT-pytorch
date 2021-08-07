@@ -1,13 +1,36 @@
+import sys
 import os
+import time
+import argparse
 from pathlib import Path
+
+import torch
+import torch.nn as nn
+import torch.backends.cudnn as cudnn
+from torch.autograd import Variable
+
+from PIL import Image
+
+import cv2
+from skimage import io
+import numpy as np
+import craft_utils
+import imgproc
+import file_utils
+import json
+import zipfile
+
+from collections import OrderedDict
+
+from torch.autograd import Variable
 
 import pycuda.driver as cuda
 import pycuda.autoinit
 import tensorrt as trt
+
+from icecream import ic
 TRT_LOGGER = trt.Logger()
-import craft_utils
-import imgproc
-import file_utils
+
 class RTLayer():
     """
     
@@ -30,25 +53,25 @@ class RTLayer():
         self.engine = self._load_engine()
         self.input_shape = input_shape
 
-    def __call__(self, args, image):
+    def __call__(self, args, image, text_threshold, link_threshold, low_text, poly):
+        t0 = time.time()
 
         # resize
         img_resized, target_ratio, size_heatmap = imgproc.resize_aspect_ratio(image, args.canvas_size, interpolation=cv2.INTER_LINEAR, mag_ratio=args.mag_ratio)
         ratio_h = ratio_w = 1 / target_ratio
 
         # preprocessing
-        x = imgproc.normalizeMeanVariance(img_resized)
-        x = torch.from_numpy(x).permute(2, 0, 1)    # [h, w, c] to [c, h, w]
-        x = Variable(x.unsqueeze(0))                # [c, h, w] to [b, c, h, w]
+        img_resized = imgproc.normalizeMeanVariance(img_resized)
+        img_resized = torch.from_numpy(img_resized).permute(2, 0, 1)    # [h, w, c] to [c, h, w]
+        img_resized = Variable(img_resized.unsqueeze(0))                # [c, h, w] to [b, c, h, w]
         if cuda:
-            x = x.cuda()
+            img_resized = img_resized.cuda()
+        # ic(img_resized.shape)
 
         # feed to engine and process output
         height, width = img_resized.shape[2:4]
         self.input_shape = (height,width)
         img_resized = img_resized.cpu().detach().numpy()
-        
-        print(6,img_resized.shape)
         
         segment_inputs, segment_outputs, segment_bindings = self._allocate_buffers()
         
@@ -72,18 +95,47 @@ class RTLayer():
             stream.synchronize()
             [cuda.memcpy_dtoh_async(out.host, out.device, stream) for out in segment_outputs]#Copy from the device pointer src (an int or a DeviceAllocation) to the Python buffer dest asynchronously
             stream.synchronize()
-            # print(1,segment_outputs[0].host.shape)
+            bs = context.get_binding_shape(2)
+
             y_out = segment_outputs[0].host
         
-        y1 =  y_out[0:np.array(context.get_binding_shape(2)).prod()].reshape(context.get_binding_shape(2))
-        print('head: ',y_out[0:np.array(context.get_binding_shape(2)).prod()])
-        print('tail: ',y_out[np.array(context.get_binding_shape(2)).prod()-2:])
-        # y1 =  y_out[0:np.array(context.get_binding_shape(2)).prod()].reshape(context.get_binding_shape(2))
+            # ic(context.get_binding_shape(1))
+            ic(bs)
+        y1 =  y_out[0:np.array(bs).prod()].reshape(bs)
+        ic('head: ',y_out[0:np.array(bs).prod()])
+        ic('tail: ',y_out[np.array(bs).prod():])
         
         y = torch.from_numpy(y1)
-        print(5,'y2: ',y.shape)
-        print('value: ',y)
-        return y
+        ic(5,'y2: ',y.shape)
+        ic('value: ',y)
+
+        # make score and link map
+        score_text = y[0,:,:,0].cpu().data.numpy()
+        score_link = y[0,:,:,1].cpu().data.numpy()
+
+        t0 = time.time() - t0
+        t1 = time.time()
+
+        # Post-processing
+        boxes, polys = craft_utils.getDetBoxes(score_text, score_link, text_threshold, link_threshold, low_text, poly)
+
+        # coordinate adjustment
+        boxes = craft_utils.adjustResultCoordinates(boxes, ratio_w, ratio_h)
+        polys = craft_utils.adjustResultCoordinates(polys, ratio_w, ratio_h)
+        for k in range(len(polys)):
+            if polys[k] is None: polys[k] = boxes[k]
+
+        t1 = time.time() - t1
+
+        # render results (optional)
+        render_img = score_text.copy()
+        render_img = np.hstack((render_img, score_link))
+        ret_score_text = imgproc.cvt2HeatmapImg(render_img)
+
+        if args.show_time : print("\ninfer/postproc time : {:.3f}/{:.3f}".format(t0, t1))
+
+        return boxes, polys, ret_score_text
+        
     def _load_plugins(self):
         if trt.__version__[0] < '7':
             ctypes.CDLL("./libflattenconcat.so")
