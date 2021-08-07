@@ -83,10 +83,10 @@ def test_net(args, image, text_threshold, link_threshold, low_text, cuda, poly):
     ort_inputs = {ort_session.get_inputs()[0].name: to_numpy(img_resized)}
     ort_outs = ort_session.run(None, ort_inputs)
     y= ort_outs[0]
-
+   
     # make score and link map
-    score_text = y[0,:,:,0].data.numpy()
-    score_link = y[0,:,:,1].data.numpy()
+    score_text = y[0,:,:,0]
+    score_link = y[0,:,:,1]
 
     t0 = time.time() - t0
     t1 = time.time()
