@@ -3,32 +3,20 @@
 """
 _____________________________________________________________________________
 
-This file contains main inference pipeline to Triton
+This file contains main inference pipeline to Tensor RT
 _____________________________________________________________________________
 """
 from icecream import ic
-import sys
 import os
 import time
 import argparse
-
-import torch
-import torch.nn as nn
-import torch.backends.cudnn as cudnn
-from torch.autograd import Variable
 
 from PIL import Image
 
 import cv2
 from skimage import io
-import numpy as np
-import craft_utils
 import imgproc
 import file_utils
-import json
-import zipfile
-
-from collections import OrderedDict
 
 from trt_layer import RTLayer
 
