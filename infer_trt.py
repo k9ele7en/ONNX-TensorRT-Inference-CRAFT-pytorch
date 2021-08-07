@@ -59,7 +59,7 @@ def test_net(args, image, text_threshold, link_threshold, low_text, cuda, poly):
     t0 = time.time()
 
     layer = RTLayer()
-    y = layer(image)
+    y = layer(args, image)
 
     # make score and link map
     score_text = y[0,:,:,0].cpu().data.numpy()

@@ -4,7 +4,10 @@ from pathlib import Path
 import pycuda.driver as cuda
 import pycuda.autoinit
 import tensorrt as trt
-
+TRT_LOGGER = trt.Logger()
+import craft_utils
+import imgproc
+import file_utils
 class RTLayer():
     """
     
@@ -27,7 +30,7 @@ class RTLayer():
         self.engine = self._load_engine()
         self.input_shape = input_shape
 
-    def __call__(self, image):
+    def __call__(self, args, image):
 
         # resize
         img_resized, target_ratio, size_heatmap = imgproc.resize_aspect_ratio(image, args.canvas_size, interpolation=cv2.INTER_LINEAR, mag_ratio=args.mag_ratio)
