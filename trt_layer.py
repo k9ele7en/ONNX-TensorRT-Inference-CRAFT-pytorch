@@ -63,6 +63,7 @@ class RTLayer():
         # preprocessing
         img_resized = imgproc.normalizeMeanVariance(img_resized)
         img_resized = torch.from_numpy(img_resized).permute(2, 0, 1)    # [h, w, c] to [c, h, w]
+        
         img_resized = Variable(img_resized.unsqueeze(0))                # [c, h, w] to [b, c, h, w]
         if cuda:
             img_resized = img_resized.cuda()
