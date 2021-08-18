@@ -16,14 +16,14 @@ Note: This repo is about converting steps to finally get Tensor RT engine, and i
 
 ### Author
 k9ele7en. Give 1 star if you find some value in this repo. <br>
-[Donate] nano_1q8aj68brbw88hira69z4r4hh9qi3oae6inmrpdtc7korpuuwj785zhdtc8i
+[Donate] nano_1q8aj68brbw88hira69z4r4hh9qi3oae6inmrpdtc7korpuuwj785zhdtc8i <br>
 Thank you.
 
 ### License
 [MIT License] A short, permissive software license. Basically, you can do whatever you want as long as you include the original copyright and license notice in any copy of the software/source.
 
 ## Updates
-**7 Aug, 2021**: Init repo, converter run success.
+**7 Aug, 2021**: Init repo, converter run success. Run infer by ONNX success. Run infer by RT engine return wrong output.
 
 
 ## Getting started
@@ -59,4 +59,9 @@ $ python onnx2trt.py
 ### 4. Start infer on Tensor RT engine
 ```
 $ python infer_trt.py
+```
+
+### 5. Infer on ONNX format
+```
+$ python infer_onnx.py
 ```
