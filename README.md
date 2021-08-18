@@ -16,7 +16,6 @@ Note: This repo is about converting steps to finally get Tensor RT engine, and i
 
 ### Author
 k9ele7en. Give 1 star if you find some value in this repo. <br>
-[Donate] nano_1q8aj68brbw88hira69z4r4hh9qi3oae6inmrpdtc7korpuuwj785zhdtc8i <br>
 Thank you.
 
 ### License
